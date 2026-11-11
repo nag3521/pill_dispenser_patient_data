@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pill Dispenser AR</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <style>
+      body { margin: 0; overflow: hidden; font-family: system-ui, sans-serif; }
+      #hint {
+        position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+        background: rgba(0,0,0,.6); color: #fff; padding: 6px 14px;
+        border-radius: 999px; font-size: 14px; z-index: 10;
+      }
+      #card {
+        position: fixed; left: 8px; right: 8px; bottom: 8px; max-height: 55vh;
+        overflow-y: auto; background: rgba(255,255,255,.96); color: #111;
+        border-radius: 14px; padding: 14px; z-index: 10; display: none;
+        box-shadow: 0 4px 20px rgba(0,0,0,.35);
+      }
+      #card h2 { margin: 0; font-size: 20px; }
+      #card .meta { color: #555; font-size: 13px; margin: 2px 0 10px; }
+      #card table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      #card th, #card td { text-align: left; padding: 6px 4px; border-top: 1px solid #ddd; }
+      .badge { padding: 2px 8px; border-radius: 999px; font-size: 12px; color: #fff; }
+      .taken { background: #2e9e4f; } .missed { background: #d63a3a; } .pending { background: #e0a020; }
+    </style>
+  </head>
+  <body>
+    <div id="hint">Point the camera at the marker</div>
+    <div id="card"></div>
+
+    <a-scene
+      mindar-image="imageTargetSrc: ./targets.mind;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+    >
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity id="target" mindar-image-target="targetIndex: 0">
+        <!-- Status cube: green = all taken, red = a dose was missed, amber = doses pending -->
+        <a-box id="statusCube" position="0 0 0.15" width="0.25" height="0.25" depth="0.25" color="#888"
+               animation="property: rotation; to: 0 360 0; dur: 6000; easing: linear; loop: true"></a-box>
+      </a-entity>
+    </a-scene>
+
+    <script>
+      // Where the data comes from. Later, point this to your dispenser's backend API.
+      const DATA_URL = "./patient.json";
+
+      const card = document.getElementById("card");
+      const hint = document.getElementById("hint");
+      const cube = document.getElementById("statusCube");
+
+      function el(tag, text, cls) {
+        const e = document.createElement(tag);
+        if (text !== undefined && text !== null) e.textContent = text; // textContent avoids HTML injection
+        if (cls) e.className = cls;
+        return e;
+      }
+
+      function render(p) {
+        card.replaceChildren();
+        card.appendChild(el("h2", p.name));
+        card.appendChild(el("div", `ID: ${p.id}  |  Age: ${p.age}  |  Updated: ${p.lastUpdated}`, "meta"));
+
+        const table = el("table");
+        const head = el("tr");
+        ["Medication", "Due", "Taken at", "Status"].forEach(h => head.appendChild(el("th", h)));
+        table.appendChild(head);
+
+        p.pills.forEach(d => {
+          const row = el("tr");
+          row.appendChild(el("td", d.medication));
+          row.appendChild(el("td", d.scheduled));
+          row.appendChild(el("td", d.takenAt || "-"));
+          const s = el("td");
+          s.appendChild(el("span", d.status, "badge " + d.status));
+          row.appendChild(s);
+          table.appendChild(row);
+        });
+        card.appendChild(table);
+
+        const anyMissed = p.pills.some(d => d.status === "missed");
+        const allTaken = p.pills.every(d => d.status === "taken");
+        cube.setAttribute("color", anyMissed ? "#d63a3a" : allTaken ? "#2e9e4f" : "#e0a020");
+      }
+
+      async function load() {
+        try {
+          const res = await fetch(DATA_URL, { cache: "no-store" }); // always fetch fresh data
+          render(await res.json());
+        } catch (err) {
+          card.replaceChildren(el("div", "Could not load patient data."));
+        }
+      }
+
+      const target = document.getElementById("target");
+      target.addEventListener("targetFound", () => {
+        hint.style.display = "none";
+        card.style.display = "block";
+        load();
+      });
+      target.addEventListener("targetLost", () => {
+        card.style.display = "none";
+        hint.style.display = "block";
+      });
+    </script>
+  </body>
+</html>

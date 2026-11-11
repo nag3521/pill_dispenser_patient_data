@@ -1,0 +1,12 @@
+{
+  "id": "P-1001",
+  "name": "Demo Patient",
+  "age": 67,
+  "lastUpdated": "2026-11-11 08:05",
+  "pills": [
+    { "medication": "Metformin 500 mg",   "scheduled": "08:00", "takenAt": "08:05", "status": "taken" },
+    { "medication": "Amlodipine 5 mg",    "scheduled": "09:00", "takenAt": "09:02", "status": "taken" },
+    { "medication": "Metformin 500 mg",   "scheduled": "14:00", "takenAt": null,    "status": "missed" },
+    { "medication": "Atorvastatin 10 mg", "scheduled": "21:00", "takenAt": null,    "status": "pending" }
+  ]
+}
